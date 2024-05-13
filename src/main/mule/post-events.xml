@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:anypoint-mq="http://www.mulesoft.org/schema/mule/anypoint-mq" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/anypoint-mq http://www.mulesoft.org/schema/mule/anypoint-mq/current/mule-anypoint-mq.xsd">
+	<anypoint-mq:config name="Anypoint_MQ_Config" doc:name="Anypoint MQ Config" doc:id="2c1850e1-d9e3-4a4b-a5b2-c8928e04dd59" >
+		<anypoint-mq:connection url="https://mq-us-east-1.anypoint.mulesoft.com/api/v1/organizations/59cbbf43-f12b-4e68-b8b2-cef752adff1b/environments/3a9500be-8ab3-43c7-b8dc-4f210b85d6fe" clientId="c1fb39b3536d43cd907217471d7f268a" clientSecret="c11a075F5E2C4d9d96239D08fa12CD29" />
+	</anypoint-mq:config>
+	<sub-flow name="post-events-sub-flow" doc:id="fb080cf3-a972-4787-8ccd-cc12302d9c28" >
+		<logger level="INFO" doc:name="Flow start" doc:id="8d6a6acd-972d-491b-b39c-2556072145bc" message='#["Flow start " ++ now() as String]'/>
+		<set-variable value="#[payload.'sample_id']" doc:name="sampleId" doc:id="028b5ea7-30d4-4a00-8bd7-f499fe1e8e2b" variableName="sampleId"/>
+		<ee:transform doc:name="map payload" doc:id="b0142279-aae9-421c-8dfe-4487190ad713" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"properties":{
+		"type": payload."type"
+	},
+	"body": payload
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logg payload" doc:id="5074c223-e687-40e2-9eca-38f5be6de249" message="#[payload]"/>
+		<anypoint-mq:publish doc:name="Publish to Sample Exchange" doc:id="c4419097-c79a-4049-ac65-de9e0357010b" config-ref="Anypoint_MQ_Config" destination="sample-exchange">
+			<anypoint-mq:body ><![CDATA[#[payload.body]]]></anypoint-mq:body>
+			<anypoint-mq:properties ><![CDATA[#[payload.properties]]]></anypoint-mq:properties>
+		</anypoint-mq:publish>
+		<ee:transform doc:name="response to JSON" doc:id="4c265116-4096-4f07-b857-04f4bfbd4751" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"sample_id": vars.sampleId,
+	"message": "Event received successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Flow end" doc:id="f9678722-2c39-4df8-8127-f2ac913055e0" message='#["Flow end " ++ now() as String]'/>
+	</sub-flow>
+</mule>
